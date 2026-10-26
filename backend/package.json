@@ -4,10 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "postinstall": "node -e \"require('playwright').chromium.install()\""
-  },
+    "start": "node server.js"
+  }
+,
   "keywords": [],
   "author": "",
   "license": "ISC",
