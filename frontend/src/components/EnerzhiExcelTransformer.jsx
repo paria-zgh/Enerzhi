@@ -681,9 +681,10 @@ const EnerzhiExcelTransformer = () => {
   const downloadAndTransformExcel = async () => {
     try {
       setLoading(true);
-      setMessage('در حال دریافت فایل اکسل بورس انرژی...');
+      setMessage('در حال دریافت فایل اکسل بورس انرژی (ممکن است تا ۱ دقیقه زمان ببرد)...');
 
-      const response = await fetch('/api/offers/excel');
+      // آدرس کامل بک‌اند روی Render:
+      const response = await fetch('https://enerzhi-3.onrender.com/api/offers/excel');
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -691,6 +692,13 @@ const EnerzhiExcelTransformer = () => {
       }
 
       const rawExcelBlob = await response.blob();
+
+      // چک کردن اینکه آیا واقعاً اکسل دانلود شده یا متن خطا برگشته:
+      if (rawExcelBlob.type.includes('text') || rawExcelBlob.type.includes('html')) {
+        const errorHtml = await rawExcelBlob.text();
+        throw new Error('پاسخ سرور فایل اکسل معتبر نیست: ' + errorHtml.slice(0, 100));
+      }
+
       const processedData = await processExcelFile(rawExcelBlob);
 
       await exportExcel(processedData);
@@ -703,6 +711,7 @@ const EnerzhiExcelTransformer = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div style={{ padding: 20, fontFamily: 'Arial', direction: 'rtl' }}>
