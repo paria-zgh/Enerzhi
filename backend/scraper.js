@@ -5,21 +5,22 @@ const jalaali = require('jalaali-js');
 
 // پیدا کردن مسیر Chrome یا Edge در ویندوز
 function getBrowserPath() {
+    if (process.platform !== 'win32') return null;
+  
     const possiblePaths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
     ];
-
+  
     for (const browserPath of possiblePaths) {
-        if (fs.existsSync(browserPath)) {
-            return browserPath;
-        }
+      if (fs.existsSync(browserPath)) return browserPath;
     }
-
+  
     return null;
-}
+  }
+  
 
 // تبدیل اعداد فارسی و عربی به انگلیسی
 function toEnglishDigits(value) {
@@ -122,17 +123,16 @@ async function scrapeOfferAnnouncements(options = {}) {
     const executablePath = getBrowserPath();
 
     const browser = await chromium.launch({
-        headless: true,
-        executablePath: executablePath || undefined,
-        args: [
-            '--disable-web-security',
-            '--allow-running-insecure-content',
-            '--ignore-c ',
-            '--ignore-certificate-errors',
-            '--no-sandbox',
-            '--disable-set'
-        ]
+      headless: true,
+      executablePath: executablePath || undefined,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--ignore-certificate-errors'
+      ]
     });
+    
 
     const context = await browser.newContext({
         ignoreHTTPSErrors: true,
