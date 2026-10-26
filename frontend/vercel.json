@@ -1,0 +1,9 @@
+{
+    "rewrites": [
+      {
+        "source": "/api/offers/excel",
+        "destination": "https://enerzhi-3.onrender.com/api/offers/excel"
+      }
+    ]
+  }
+  

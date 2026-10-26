@@ -684,7 +684,7 @@ const EnerzhiExcelTransformer = () => {
       setMessage('در حال دریافت فایل اکسل بورس انرژی (ممکن است تا ۱ دقیقه زمان ببرد)...');
 
       // آدرس کامل بک‌اند روی Render:
-      const response = await fetch('https://enerzhi-3.onrender.com/api/offers/excel');
+      const response = await fetch('/api/offers/excel');
 
       if (!response.ok) {
         const errorText = await response.text();
