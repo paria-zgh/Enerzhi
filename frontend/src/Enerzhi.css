@@ -1,0 +1,52 @@
+/* frontend/src/Enerzhi.css */
+.enerzhi-container {
+    text-align: center;
+    margin: 20px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.enerzhi-container h2 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.download-button {
+    background-color: #4CAF50; /* سبز */
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.download-button:hover:not(:disabled) {
+    background-color: #45a049;
+}
+
+.download-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #f44336; /* قرمز */
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+.info-message {
+    color: #666;
+    margin-top: 15px;
+    font-size: 0.9em;
+}

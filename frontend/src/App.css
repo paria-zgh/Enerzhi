@@ -1,0 +1,71 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  direction: rtl;
+  font-family: Tahoma, Arial, sans-serif;
+  background: #f1f5f9;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 500px;
+  padding: 36px;
+  text-align: center;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.card h1 {
+  margin-top: 0;
+  color: #1f2937;
+  font-size: 26px;
+}
+
+.description {
+  color: #64748b;
+  line-height: 2;
+  font-size: 15px;
+}
+
+.download-button {
+  border: none;
+  border-radius: 8px;
+  padding: 14px 28px;
+  color: #ffffff;
+  background: #198754;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.download-button:hover {
+  background: #146c43;
+}
+
+.download-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.message {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 8px;
+  color: #334155;
+  background: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.8;
+}
