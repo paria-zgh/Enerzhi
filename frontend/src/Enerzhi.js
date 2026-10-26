@@ -10,7 +10,7 @@ function Enerzhi() {
         setError(null);
 
         try {
-            const response = await fetch('https://enerzhi-1.onrender.com/api/offers/excel');
+            const response = await fetch('https://enerzhi-3.onrender.com/api/offers/excel');
 
             if (!response.ok) {
                 const errorText = await response.text();
