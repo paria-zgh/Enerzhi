@@ -10,7 +10,7 @@ export default function DownloadRawExcelButton() {
 
     try {
       // درخواست به بک‌اند؛ با این مسیر فایل خام دانلود می‌شه
-      const response = await fetch('http://localhost:5000/api/offers/raw-excel');
+      const response = await fetch('https://enerzhi-3.onrender.com/api/offers/excel');
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
