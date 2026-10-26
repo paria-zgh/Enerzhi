@@ -217,16 +217,7 @@ const EnerzhiExcelTransformer = () => {
     international.sort(sortByProductName);
     other.sort(sortByProductName);
 
-    const emptyRow = Object.fromEntries(columns.map((col) => [col, '']));
 
-    const createHeaderRow = () => {
-      const row = {};
-      columns.forEach((col) => {
-        row[col] = col;
-      });
-      row.__isHeader = true;
-      return row;
-    };
 
  
     const finalData = [];
