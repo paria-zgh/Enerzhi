@@ -10,6 +10,7 @@
     "@testing-library/user-event": "^13.5.0",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
+    "html-to-image": "^1.11.11",
     "jalaali-js": "^2.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -28,6 +29,9 @@
       "react-app/jest"
     ]
   },
+  "dependencies":{
+   
+  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -39,5 +43,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+    
   }
 }
