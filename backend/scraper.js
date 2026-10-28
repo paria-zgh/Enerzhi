@@ -19,47 +19,45 @@ function getBrowserPath() {
     }
   
     return null;
-  }
-  
+}
 
 // تبدیل اعداد فارسی و عربی به انگلیسی
 function toEnglishDigits(value) {
-    if (!value) {
-        return '';
-    }
-
+    if (!value) return '';
     return String(value)
-        .replace(/[۰-۹]/g, (digit) => {
-            return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit));
-        })
-        .replace(/[٠-٩]/g, (digit) => {
-            return String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit));
-        });
+        .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+        .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
 }
 
 // تبدیل اعداد انگلیسی به فارسی
 function toPersianDigits(value) {
-    if (!value) {
-        return '';
-    }
-
-    return String(value).replace(
-        /\d/g,
-        (digit) => '۰۱۲۳۴۵۶۷۸۹'[digit]
-    );
+    if (!value) return '';
+    return String(value).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
 }
 
-// تاریخ شمسی فردا با اعداد انگلیسی
-function getTomorrowJalali() {
+// ✅ اصلاح‌شده: تاریخ شمسی روز کاری بعدی (چهارشنبه، پنجشنبه و جمعه -> شنبه)
+function getNextTradingDayJalali() {
     const today = new Date();
+    const targetDate = new Date(today);
+    const dayOfWeek = today.getDay(); // 0: یکشنبه, 1: دوشنبه, ..., 3: چهارشنبه, 4: پنجشنبه, 5: جمعه, 6: شنبه
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    let daysToAdd = 1;
+    if (dayOfWeek === 3) {
+        daysToAdd = 3; // چهارشنبه -> شنبه
+    } else if (dayOfWeek === 4) {
+        daysToAdd = 2; // پنجشنبه -> شنبه
+    } else if (dayOfWeek === 5) {
+        daysToAdd = 1; // جمعه -> شنبه
+    } else {
+        daysToAdd = 1;
+    }
+
+    targetDate.setDate(today.getDate() + daysToAdd);
 
     const jalaliDate = jalaali.toJalaali(
-        tomorrow.getFullYear(),
-        tomorrow.getMonth() + 1,
-        tomorrow.getDate()
+        targetDate.getFullYear(),
+        targetDate.getMonth() + 1,
+        targetDate.getDate()
     );
 
     return (
@@ -83,26 +81,19 @@ async function setDateValue(page, inputLocator, dateValue) {
     await inputLocator.press('Backspace');
 
     // واردکردن تاریخ
-    await inputLocator.type(dateValue, {
-        delay: 80
-    });
+    await inputLocator.type(dateValue, { delay: 80 });
 
     // تأیید DatePicker
     await inputLocator.press('Enter');
-
-    // خروج از فیلد؛ از Escape استفاده نمی‌کنیم
     await inputLocator.press('Tab');
 
     await page.waitForTimeout(700);
 
     const actualValue = await inputLocator.inputValue();
-
     const normalizedActualValue = toEnglishDigits(actualValue);
     const normalizedExpectedValue = toEnglishDigits(dateValue);
 
-    console.log(
-        `Date input value: ${actualValue} | Expected: ${dateValue}`
-    );
+    console.log(`Date input value: ${actualValue} | Expected: ${dateValue}`);
 
     if (normalizedActualValue !== normalizedExpectedValue) {
         throw new Error(
@@ -113,9 +104,7 @@ async function setDateValue(page, inputLocator, dateValue) {
 
 // اسکرپ اطلاعات و در صورت نیاز دانلود اکسل اصلی سایت
 async function scrapeOfferAnnouncements(options = {}) {
-    const {
-        downloadExcel = false
-    } = options;
+    const { downloadExcel = false } = options;
 
     let downloadedExcelPath = null;
     let downloadedExcelName = null;
@@ -132,7 +121,6 @@ async function scrapeOfferAnnouncements(options = {}) {
         '--ignore-certificate-errors'
       ]
     });
-    
 
     const context = await browser.newContext({
         ignoreHTTPSErrors: true,
@@ -144,9 +132,6 @@ async function scrapeOfferAnnouncements(options = {}) {
     });
     
     const page = await context.newPage();
-    
-
-  
 
     try {
         console.log('Opening IEE page...');
@@ -161,194 +146,59 @@ async function scrapeOfferAnnouncements(options = {}) {
 
         await page.waitForTimeout(3000);
 
-        /*
-         * محاسبه تاریخ فردا
-         *
-         * مثال:
-         * 1405/06/01
-         */
-        const tomorrowJalali = getTomorrowJalali();
+        // محاسبه تاریخ هدف (شنبه در چهارشنبه‌ها)
+        const targetTradingDayJalali = getNextTradingDayJalali();
+        console.log(`Target trading date: ${targetTradingDayJalali}`);
 
-        console.log(
-            `Target date: ${tomorrowJalali}`
-        );
-
-        /*
-         * پیدا کردن دو فیلتر تاریخ
-         */
+        // پیدا کردن دو فیلتر تاریخ
         const dateInputs = page.locator('input.rmdp-input');
-
         if (await dateInputs.count() < 2) {
-            throw new Error(
-                'دو فیلتر تاریخ در صفحه پیدا نشد.'
-            );
+            throw new Error('دو فیلتر تاریخ در صفحه پیدا نشد.');
         }
 
         const fromDateInput = dateInputs.nth(0);
         const toDateInput = dateInputs.nth(1);
 
-        await fromDateInput.waitFor({
-            state: 'visible',
-            timeout: 20000
-        });
+        await fromDateInput.waitFor({ state: 'visible', timeout: 20000 });
+        await toDateInput.waitFor({ state: 'visible', timeout: 20000 });
 
-        await toDateInput.waitFor({
-            state: 'visible',
-            timeout: 20000
-        });
+        // وارد کردن تاریخ
+        await setDateValue(page, fromDateInput, targetTradingDayJalali);
+        await page.waitForTimeout(500);
+        await setDateValue(page, toDateInput, targetTradingDayJalali);
 
-        /*
-         * واردکردن تاریخ فردا در فیلتر تاریخ شروع
-         */
-        await setDateValue(
-            page,
-            fromDateInput,
-            tomorrowJalali
-        );
-
-        await page.waitForTimeout(700);
-
-        /*
-         * واردکردن تاریخ فردا در فیلتر تاریخ پایان
-         */
-        await setDateValue(
-            page,
-            toDateInput,
-            tomorrowJalali
-        );
-
-        /*
-         * بررسی مقدار واقعی دو فیلتر
-         */
+        // بررسی مقدار اعمال شده
         const actualFromDate = await fromDateInput.inputValue();
         const actualToDate = await toDateInput.inputValue();
 
-        console.log(
-            `From date: ${actualFromDate}`
-        );
-
-        console.log(
-            `To date: ${actualToDate}`
-        );
-
         if (
-            toEnglishDigits(actualFromDate) !== tomorrowJalali ||
-            toEnglishDigits(actualToDate) !== tomorrowJalali
+            toEnglishDigits(actualFromDate) !== targetTradingDayJalali ||
+            toEnglishDigits(actualToDate) !== targetTradingDayJalali
         ) {
             throw new Error(
-                `تاریخ فیلترها اشتباه است. ` +
-                `From: ${actualFromDate}, ` +
-                `To: ${actualToDate}, ` +
-                `Expected: ${tomorrowJalali}`
+                `تاریخ فیلترها اشتباه است. From: ${actualFromDate}, To: ${actualToDate}, Expected: ${targetTradingDayJalali}`
             );
         }
 
-        /*
-         * پیدا کردن دکمه جستجو
-         */
-        const searchButton = page
-            .locator('button.btn-success:has-text("جستجو")')
-            .first();
+        // کلیک روی دکمه جستجو
+        const searchButton = page.locator('button.btn-success:has-text("جستجو")').first();
+        await searchButton.waitFor({ state: 'visible', timeout: 15000 });
 
-        await searchButton.waitFor({
-            state: 'visible',
-            timeout: 15000
-        });
-
-        console.log(
-            'Clicking search button...'
-        );
-
-        /*
-         * کلیک روی دکمه جستجو
-         */
+        console.log('Clicking search button...');
         await searchButton.click();
 
         await page.waitForTimeout(3000);
-
-        await page
-            .waitForLoadState('networkidle', {
-                timeout: 30000
-            })
-            .catch(() => {});
+        await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
 
         /*
-         * دانلود اکسل اصلی سایت، در صورت درخواست
+         * ✅ مرحله ۱: اول استخراج جدول را بررسی می‌کنیم تا ببینیم اصلاً داده‌ای هست یا نه
          */
-        if (downloadExcel) {
-            try {
-                const excelButtonSelector =
-                    'button.btn.btn-outline-success.ms-2';
+        await page.waitForSelector('table', { timeout: 15000 }).catch(() => {});
 
-                await page.waitForSelector(
-                    excelButtonSelector,
-                    {
-                        state: 'visible',
-                        timeout: 15000
-                    }
-                );
-
-                console.log(
-                    'Excel button found. Downloading original Excel...'
-                );
-
-                const [download] = await Promise.all([
-                    page.waitForEvent('download'),
-                    page.click(excelButtonSelector)
-                ]);
-
-                downloadedExcelName =
-                    download.suggestedFilename();
-
-                if (!downloadedExcelName) {
-                    downloadedExcelName =
-                        `offers-${Date.now()}.xlsx`;
-                }
-
-                const tempFileName =
-                    `${Date.now()}-${downloadedExcelName}`;
-
-                downloadedExcelPath = path.join(
-                    __dirname,
-                    tempFileName
-                );
-
-                await download.saveAs(
-                    downloadedExcelPath
-                );
-
-                console.log(
-                    `Original Excel saved temporarily at: ${downloadedExcelPath}`
-                );
-            } catch (error) {
-                console.error(
-                    'Could not download original Excel:',
-                    error.message
-                );
-
-                throw error;
-            }
-        }
-
-        /*
-         * صبر برای آماده‌شدن جدول نتایج
-         */
-        await page.waitForSelector('table', {
-            timeout: 20000
-        });
-
-        /*
-         * استخراج جدول هدف
-         */
         const data = await page.evaluate(() => {
-            const tables = Array.from(
-                document.querySelectorAll('table')
-            );
-
+            const tables = Array.from(document.querySelectorAll('table'));
             const targetTable = tables.find((table) => {
-                const tableText =
-                    table.innerText || '';
-
+                const tableText = table.innerText || '';
                 return (
                     tableText.includes('بازار هدف') ||
                     tableText.includes('نام کالا') ||
@@ -356,89 +206,96 @@ async function scrapeOfferAnnouncements(options = {}) {
                 );
             });
 
-            if (!targetTable) {
-                return null;
-            }
+            if (!targetTable) return null;
 
-            return Array.from(
-                targetTable.querySelectorAll('tr')
-            )
-                .map((row) => {
-                    return Array.from(
-                        row.querySelectorAll('th, td')
-                    ).map((cell) =>
-                        cell.innerText.trim()
-                    );
-                })
+            return Array.from(targetTable.querySelectorAll('tr'))
+                .map((row) => Array.from(row.querySelectorAll('th, td')).map(cell => cell.innerText.trim()))
                 .filter((row) => row.length > 0);
         });
 
-        /*
-         * بررسی وجود جدول و ردیف‌های واقعی
-         */
-        if (!data || data.length <= 1) {
-            throw new Error(
-                `اطلاعات قابل‌استفاده‌ای برای تاریخ ${tomorrowJalali} استخراج نشد.`
-            );
+        // اگر داده‌ای برای این تاریخ نبود:
+        const hasRows = data && data.length > 1;
+
+        if (!hasRows) {
+            console.log(`⚠️ هیچ عرضه‌ای برای تاریخ ${targetTradingDayJalali} ثبت نشده است.`);
+            return {
+                isEmpty: true,
+                headers: [],
+                rows: [],
+                excelPath: null,
+                excelName: null,
+                message: `هیچ عرضه‌ای برای تاریخ ${targetTradingDayJalali} ثبت نشده است.`,
+                meta: {
+                    totalRows: 0,
+                    targetDateJalali: targetTradingDayJalali,
+                    targetDatePersian: toPersianDigits(targetTradingDayJalali),
+                    scrapedAt: new Date().toISOString()
+                }
+            };
         }
 
         const headers = data[0];
         const rows = data.slice(1);
 
-        if (rows.length === 0) {
-            throw new Error(
-                `هیچ ردیفی برای تاریخ ${tomorrowJalali} پیدا نشد.`
-            );
+        /*
+         * ✅ مرحله ۲: دانلود اکسل اصلی فقط زمانی که داده واقعاً وجود داشته باشد
+         */
+        if (downloadExcel) {
+            const excelButtonSelector = 'button.btn.btn-outline-success.ms-2';
+            const excelButton = page.locator(excelButtonSelector).first();
+
+            const isBtnVisible = await excelButton.isVisible().catch(() => false);
+
+            if (isBtnVisible) {
+                console.log('Excel button found. Attempting to download original Excel...');
+
+                try {
+                    // با تایم‌اوت ۱۰ ثانیه تا اگر دکمه کار نکرد، برنامه تا ابد معطل نشود
+                    const [download] = await Promise.all([
+                        page.waitForEvent('download', { timeout: 10000 }),
+                        excelButton.click()
+                    ]);
+
+                    downloadedExcelName = download.suggestedFilename() || `offers-${Date.now()}.xlsx`;
+                    const tempFileName = `${Date.now()}-${downloadedExcelName}`;
+                    downloadedExcelPath = path.join(__dirname, tempFileName);
+
+                    await download.saveAs(downloadedExcelPath);
+                    console.log(`Original Excel saved temporarily at: ${downloadedExcelPath}`);
+                } catch (dlErr) {
+                    console.warn('⚠️ دکمه اکسل کلیک شد اما فایلی دانلود نشد (شاید سایت دانلودی ارائه نداده):', dlErr.message);
+                }
+            } else {
+                console.warn('⚠️ دکمه دانلود اکسل در صفحه فعال یا موجود نبود.');
+            }
         }
 
-        console.log(
-            `Successfully scraped ${rows.length} rows for ${tomorrowJalali}.`
-        );
+        console.log(`Successfully scraped ${rows.length} rows for ${targetTradingDayJalali}.`);
 
         return {
+            isEmpty: false,
             headers,
             rows,
-
-            // مسیر فایل موقت اکسل
             excelPath: downloadedExcelPath,
-
-            // نام اصلی فایل اکسل سایت
             excelName: downloadedExcelName,
-
             meta: {
                 totalRows: rows.length,
-                targetDateJalali: tomorrowJalali,
-                targetDatePersian:
-                    toPersianDigits(tomorrowJalali),
+                targetDateJalali: targetTradingDayJalali,
+                targetDatePersian: toPersianDigits(targetTradingDayJalali),
                 scrapedAt: new Date().toISOString()
             }
         };
+
     } catch (error) {
-        console.error(
-            'Scraper Error:',
-            error.message
-        );
+        console.error('Scraper Error:', error.message);
 
-        /*
-         * حذف فایل موقت در صورت خطا
-         */
-        if (
-            downloadedExcelPath &&
-            fs.existsSync(downloadedExcelPath)
-        ) {
+        // حذف فایل موقت در صورت بروز خطا
+        if (downloadedExcelPath && fs.existsSync(downloadedExcelPath)) {
             try {
-                fs.unlinkSync(
-                    downloadedExcelPath
-                );
-
-                console.log(
-                    'Temporary Excel deleted after scraper error.'
-                );
+                fs.unlinkSync(downloadedExcelPath);
+                console.log('Temporary Excel deleted after scraper error.');
             } catch (deleteError) {
-                console.error(
-                    'Could not delete temporary Excel:',
-                    deleteError.message
-                );
+                console.error('Could not delete temporary Excel:', deleteError.message);
             }
         }
 

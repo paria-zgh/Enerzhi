@@ -2,44 +2,52 @@
 
 const ExcelJS = require('exceljs');
 const jalaali = require('jalaali-js');
-// const { createCanvas, registerFont } = require('@napi-rs/canvas'); // واترمارک فعلا غیرفعال است
 const path = require('path');
-
-// --- تنظیم فونت (فعلا غیرفعال) ---
-// const fontPath = '/usr/share/fonts/truetype/msttcorefonts/Calibri.ttf';
-// let isFontRegistered = false;
-// function registerCalibriFont() { /* ... */ }
-
 
 // --- توابع کمکی ---
 
 function fixProductName(name) {
     if (!name) return '';
-    // منطق نرمال‌سازی نام کالا
-    return name.replace(/_/g, ' '); // مثال: جایگزینی آندرلاین با فاصله
+    return name.replace(/_/g, ' ');
 }
 
-// تابع فرمت‌دهی قیمت که فقط عدد خالص را برمی‌گرداند
 function getPriceAsNumber(price) {
     if (typeof price === 'undefined' || price === null) return 0;
-    const priceNum = Number(price.replace(/,/g, '')); // حذف کاما و تبدیل به عدد
+    const priceNum = Number(String(price).replace(/,/g, ''));
     return isNaN(priceNum) ? 0 : priceNum;
 }
 
-function getTomorrowShamsi() {
+function getNextTradingDayShamsi() {
     const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const jalaaliTomorrow = jalaali.g2j(tomorrow.getFullYear(), tomorrow.getMonth() + 1, tomorrow.getDate());
-    // فرمت تاریخ به صورت YYYY/MM/DD
-    const formattedMonth = jalaaliTomorrow.gm < 10 ? `0${jalaaliTomorrow.gm}` : jalaaliTomorrow.gm;
-    const formattedDay = jalaaliTomorrow.gd < 10 ? `0${jalaaliTomorrow.gd}` : jalaaliTomorrow.gd;
-    return `${jalaaliTomorrow.gy}/${formattedMonth}/${formattedDay}`;
+    const targetDate = new Date(today);
+    const dayOfWeek = today.getDay(); // 0: یکشنبه, 3: چهارشنبه, 4: پنجشنبه, 5: جمعه, 6: شنبه
+
+    let daysToAdd = 1;
+    if (dayOfWeek === 3) {
+        daysToAdd = 3; // چهارشنبه -> شنبه
+    } else if (dayOfWeek === 4) {
+        daysToAdd = 2; // پنجشنبه -> شنبه
+    } else if (dayOfWeek === 5) {
+        daysToAdd = 1; // جمعه -> شنبه
+    } else {
+        daysToAdd = 1;
+    }
+
+    targetDate.setDate(today.getDate() + daysToAdd);
+
+    const jalaaliDate = jalaali.g2j(
+        targetDate.getFullYear(),
+        targetDate.getMonth() + 1,
+        targetDate.getDate()
+    );
+
+    const formattedMonth = jalaaliDate.gm < 10 ? `0${jalaaliDate.gm}` : jalaaliDate.gm;
+    const formattedDay = jalaaliDate.gd < 10 ? `0${jalaaliDate.gd}` : jalaaliDate.gd;
+    
+    return `${jalaaliDate.gy}/${formattedMonth}/${formattedDay}`;
 }
 
-// تابع مرتب‌سازی بر اساس نام کالا
 function sortByProductName(a, b) {
-    // کلید 'نام کالا' را مستقیماً استفاده می‌کنیم
     const nameA = (a['نام کالا'] || '').toLowerCase();
     const nameB = (b['نام کالا'] || '').toLowerCase();
     if (nameA < nameB) return -1;
@@ -50,22 +58,22 @@ function sortByProductName(a, b) {
 // --- تابع اصلی پردازش ---
 
 async function processExcelData(scrapedData) {
-    // registerCalibriFont(); // غیرفعال شده
+    // ✅ گارد امنیتی: اگر هیچ دیتایی نبود، پردازش نکن و null برگردان
+    if (!scrapedData || !Array.isArray(scrapedData) || scrapedData.length === 0) {
+        console.warn('⚠️ داده‌ای برای پردازش یافت نشد (لیست خالی است).');
+        return null;
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Petki';
     workbook.lastModifiedBy = 'Petki';
 
-    // --- ساخت واترمارک (فعلا غیرفعال) ---
-    // ... (کدهای مربوط به canvas کامنت شده‌اند)
-
     // --- پردازش و دسته‌بندی داده‌ها ---
     let processedData = scrapedData.map(item => ({
         ...item,
-        // قیمت پایه را فقط به عدد تبدیل می‌کنیم
         'قیمت پایه': getPriceAsNumber(item['قیمت پایه']),
         'نام کالا': fixProductName(item['نام کالا']),
-        'تاریخ فردا': getTomorrowShamsi()
+        'تاریخ فردا': getNextTradingDayShamsi()
     }));
 
     // فیلتر کردن و مرتب‌سازی
@@ -77,87 +85,86 @@ async function processExcelData(scrapedData) {
     internationalOffers.sort(sortByProductName);
     otherOffers.sort(sortByProductName);
 
-
-    // --- استایل هدر ---
+    // استایل هدر
     const headerStyle = {
-        font: { bold: true, name: 'Calibri', size: 12 }, // نام فونت Calibri
-        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } }, // خاکستری روشن
+        font: { bold: true, name: 'Calibri', size: 12 },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } },
         alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
         border: { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }
     };
-    const currencyFormat = '#,##0'; // فرمت عددی برای واحد پولی (ریال)
+    const currencyFormat = '#,##0';
 
     // --- ساخت شیت داخلی ---
-    const internalSheet = workbook.addWorksheet('داخلی', {
-        views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] // فریز کردن هدر
-    });
-    internalSheet.addRows([
-        ['تاریخ فردا', 'مقصد', 'نام کالا', 'قیمت پایه (ریال)', 'توضیحات']
-    ]);
-    internalSheet.getRow(1).style = headerStyle; // اعمال استایل به هدر
-
-    internalOffers.forEach((offer, index) => {
-        const rowNum = index + 2;
-        internalSheet.addRow([
-            offer['تاریخ فردا'],
-            offer.destination,
-            offer['نام کالا'],
-            offer['قیمت پایه'], // حالا عدد خام است
-            offer.description
+    if (internalOffers.length > 0) {
+        const internalSheet = workbook.addWorksheet('داخلی', {
+            views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }]
+        });
+        internalSheet.addRows([
+            ['تاریخ فردا', 'مقصد', 'نام کالا', 'قیمت پایه (ریال)', 'توضیحات']
         ]);
-        // تنظیم استایل و فرمت سلول‌ها
-        const row = internalSheet.getRow(rowNum);
-        row.font = { name: 'Calibri', size: 11 };
-        internalSheet.getCell(rowNum, 1).alignment = { horizontal: 'center' }; // تاریخ
-        internalSheet.getCell(rowNum, 2).alignment = { horizontal: 'center' }; // مقصد
-        internalSheet.getCell(rowNum, 4).numFmt = currencyFormat; // فرمت عدد برای قیمت
-        internalSheet.getCell(rowNum, 4).alignment = { horizontal: 'right' }; // راست‌چین برای قیمت
-    });
+        internalSheet.getRow(1).style = headerStyle;
 
-    // تنظیم عرض ستون‌ها
-    internalSheet.getColumn(1).width = 15;
-    internalSheet.getColumn(2).width = 12;
-    internalSheet.getColumn(3).width = 40;
-    internalSheet.getColumn(4).width = 18;
-    internalSheet.getColumn(5).width = 30;
+        internalOffers.forEach((offer, index) => {
+            const rowNum = index + 2;
+            internalSheet.addRow([
+                offer['تاریخ فردا'],
+                offer.destination,
+                offer['نام کالا'],
+                offer['قیمت پایه'],
+                offer.description
+            ]);
+            const row = internalSheet.getRow(rowNum);
+            row.font = { name: 'Calibri', size: 11 };
+            internalSheet.getCell(rowNum, 1).alignment = { horizontal: 'center' };
+            internalSheet.getCell(rowNum, 2).alignment = { horizontal: 'center' };
+            internalSheet.getCell(rowNum, 4).numFmt = currencyFormat;
+            internalSheet.getCell(rowNum, 4).alignment = { horizontal: 'right' };
+        });
 
+        internalSheet.getColumn(1).width = 15;
+        internalSheet.getColumn(2).width = 12;
+        internalSheet.getColumn(3).width = 40;
+        internalSheet.getColumn(4).width = 18;
+        internalSheet.getColumn(5).width = 30;
+    }
 
     // --- ساخت شیت بین‌الملل ---
-    const internationalSheet = workbook.addWorksheet('بین الملل', {
-        views: [{state: 'frozen', xSplit: 1, ySplit: 1}]
-    });
-    internationalSheet.addRows([
-        ['تاریخ فردا', 'مقصد', 'نام کالا', 'قیمت پایه (ریال)', 'توضیحات', 'جزئیات قیمت مبنا']
-    ]);
-    internationalSheet.getRow(1).style = headerStyle;
-
-    internationalOffers.forEach((offer, index) => {
-        const rowNum = index + 2;
-        internationalSheet.addRow([
-            offer['تاریخ فردا'],
-            offer.destination,
-            offer['نام کالا'],
-            offer['قیمت پایه'], // عدد خام
-            offer.description,
-            offer['قیمت مبنا جزئیات محاسبه قیمت نهایی معاملات کشف پریمیوم'] // این ستون را هم بررسی کنید
+    if (internationalOffers.length > 0) {
+        const internationalSheet = workbook.addWorksheet('بین الملل', {
+            views: [{state: 'frozen', xSplit: 1, ySplit: 1}]
+        });
+        internationalSheet.addRows([
+            ['تاریخ فردا', 'مقصد', 'نام کالا', 'قیمت پایه (ریال)', 'توضیحات', 'جزئیات قیمت مبنا']
         ]);
-        const row = internationalSheet.getRow(rowNum);
-        row.font = { name: 'Calibri', size: 11 };
-        internationalSheet.getCell(rowNum, 1).alignment = { horizontal: 'center' };
-        internationalSheet.getCell(rowNum, 2).alignment = { horizontal: 'center' };
-        internationalSheet.getCell(rowNum, 4).numFmt = currencyFormat; // فرمت عدد
-        internationalSheet.getCell(rowNum, 4).alignment = { horizontal: 'right' };
-    });
+        internationalSheet.getRow(1).style = headerStyle;
 
-    internationalSheet.getColumn(1).width = 15;
-    internationalSheet.getColumn(2).width = 12;
-    internationalSheet.getColumn(3).width = 40;
-    internationalSheet.getColumn(4).width = 18;
-    internationalSheet.getColumn(5).width = 30;
-    internationalSheet.getColumn(6).width = 50;
+        internationalOffers.forEach((offer, index) => {
+            const rowNum = index + 2;
+            internationalSheet.addRow([
+                offer['تاریخ فردا'],
+                offer.destination,
+                offer['نام کالا'],
+                offer['قیمت پایه'],
+                offer.description,
+                offer['قیمت مبنا جزئیات محاسبه قیمت نهایی معاملات کشف پریمیوم']
+            ]);
+            const row = internationalSheet.getRow(rowNum);
+            row.font = { name: 'Calibri', size: 11 };
+            internationalSheet.getCell(rowNum, 1).alignment = { horizontal: 'center' };
+            internationalSheet.getCell(rowNum, 2).alignment = { horizontal: 'center' };
+            internationalSheet.getCell(rowNum, 4).numFmt = currencyFormat;
+            internationalSheet.getCell(rowNum, 4).alignment = { horizontal: 'right' };
+        });
 
+        internationalSheet.getColumn(1).width = 15;
+        internationalSheet.getColumn(2).width = 12;
+        internationalSheet.getColumn(3).width = 40;
+        internationalSheet.getColumn(4).width = 18;
+        internationalSheet.getColumn(5).width = 30;
+        internationalSheet.getColumn(6).width = 50;
+    }
 
-    // --- شیت "سایر" ---
+    // --- ساخت شیت سایر ---
     if (otherOffers.length > 0) {
         const otherSheet = workbook.addWorksheet('سایر', {
             views: [{state: 'frozen', xSplit: 1, ySplit: 1}]
@@ -173,14 +180,14 @@ async function processExcelData(scrapedData) {
                 offer['تاریخ فردا'],
                 offer.destination,
                 offer['نام کالا'],
-                offer['قیمت پایه'], // عدد خام
+                offer['قیمت پایه'],
                 offer.description
             ]);
             const row = otherSheet.getRow(rowNum);
             row.font = { name: 'Calibri', size: 11 };
             otherSheet.getCell(rowNum, 1).alignment = { horizontal: 'center' };
             otherSheet.getCell(rowNum, 2).alignment = { horizontal: 'center' };
-            otherSheet.getCell(rowNum, 4).numFmt = currencyFormat; // فرمت عدد
+            otherSheet.getCell(rowNum, 4).numFmt = currencyFormat;
             otherSheet.getCell(rowNum, 4).alignment = { horizontal: 'right' };
         });
 
@@ -198,7 +205,6 @@ async function processExcelData(scrapedData) {
         return buffer;
     } catch (error) {
         console.error('Error writing Excel buffer:', error);
-        // در صورت بروز خطا هنگام نوشتن بافر، null برمی‌گردانیم تا server.js متوجه شود.
         return null;
     }
 }

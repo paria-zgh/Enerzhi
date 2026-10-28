@@ -179,11 +179,28 @@ const EnerzhiExcelTransformer = () => {
 
   const getTomorrowShamsi = () => {
     const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    const { jy, jm, jd } = jalaali.toJalaali(tomorrow);
-
+    const targetDate = new Date(today);
+    const dayOfWeek = today.getDay(); // 0: یکشنبه, 1: دوشنبه, ..., 3: چهارشنبه, 4: پنجشنبه, 5: جمعه, 6: شنبه
+  
+    // اگر چهارشنبه باشد: 3 روز اضافه شود تا به شنبه برسد
+    if (dayOfWeek === 3) {
+      targetDate.setDate(today.getDate() + 3);
+    } 
+    // اگر پنجشنبه باشد: 2 روز اضافه شود
+    else if (dayOfWeek === 4) {
+      targetDate.setDate(today.getDate() + 2);
+    } 
+    // اگر جمعه باشد: 1 روز اضافه شود
+    else if (dayOfWeek === 5) {
+      targetDate.setDate(today.getDate() + 1);
+    } 
+    // سایر روزها (شنبه تا سه‌شنبه): همان روز بعد
+    else {
+      targetDate.setDate(today.getDate() + 1);
+    }
+  
+    const { jy, jm, jd } = jalaali.toJalaali(targetDate);
+  
     const dayNames = [
       'یکشنبه',
       'دوشنبه',
@@ -193,13 +210,13 @@ const EnerzhiExcelTransformer = () => {
       'جمعه',
       'شنبه',
     ];
-
+  
     return {
-      day: dayNames[tomorrow.getDay()],
+      day: dayNames[targetDate.getDay()],
       date: `${jy}/${String(jm).padStart(2, '0')}/${String(jd).padStart(2, '0')}`,
     };
   };
-
+  
   const processExcelFile = async (fileOrBlob) => {
     const buffer = await fileOrBlob.arrayBuffer();
 
